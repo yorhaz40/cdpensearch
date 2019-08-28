@@ -5,7 +5,7 @@ import pickle
 from typing import List, Callable, Union, Any
 from more_itertools import chunked
 from itertools import chain
-import nmslib
+# import nmslib
 from pathos.multiprocessing import Pool, cpu_count
 from math import ceil
 

@@ -5,7 +5,7 @@ from keras.models import Model, load_model
 from ktext.preprocess import processor
 import dill as dpickle
 import numpy as np
-OUTPUT_PATH = Path('./data/seq2seq/')
+OUTPUT_PATH = Path('../../data/seq2seq/')
 OUTPUT_PATH.mkdir(exist_ok=True)
 from keras.models import Model, load_model
 import pandas as pd
@@ -59,18 +59,23 @@ def datapre():
 
 def train():
     encoder_input_data, encoder_seq_len = load_encoder_inputs(OUTPUT_PATH / 'py_t_comment_vecs_v2.npy')
+    s_encoder_input_data, s_encoder_seq_len = load_encoder_inputs(OUTPUT_PATH/'py_t_api_vecs_v2.npy')
     decoder_input_data, decoder_target_data = load_decoder_inputs(OUTPUT_PATH / 'py_t_code_vecs_v2.npy')
     num_encoder_tokens, enc_pp = load_text_processor(OUTPUT_PATH / 'py_comment_proc_v2.dpkl')
+    s_num_encoder_tokens, s_enc_pp = load_text_processor(OUTPUT_PATH/'py_api_proc_v2.dpkl')
     num_decoder_tokens, dec_pp = load_text_processor(OUTPUT_PATH / 'py_code_proc_v2.dpkl')
-    seq2seq_Model = build_seq2seq_model(word_emb_dim=800,
-                                        hidden_state_dim=1000,
+
+    seq2seq_Model = build_seq2seq_model(word_emb_dim=128,
+                                        hidden_state_dim=128 ,
                                         encoder_seq_len=encoder_seq_len,
+                                        s_encoder_seq_len = s_encoder_seq_len,
                                         num_encoder_tokens=num_encoder_tokens,
+                                        num_s_encoder_tokens = s_num_encoder_tokens,
                                         num_decoder_tokens=num_decoder_tokens)
 
 
     seq2seq_Model.summary()
-    seq2seq_Model.compile(optimizer=optimizers.Nadam(lr=0.00005), loss='sparse_categorical_crossentropy')
+    seq2seq_Model.compile(optimizer=optimizers.Nadam(lr=0.5), loss='sparse_categorical_crossentropy')
 
     script_name_base = 'py_func_sum_v9_'
     csv_logger = CSVLogger('{:}.log'.format(script_name_base))
@@ -78,12 +83,13 @@ def train():
     model_checkpoint = ModelCheckpoint('{:}.epoch{{epoch:02d}}-val{{val_loss:.5f}}.hdf5'.format(script_name_base),
                                        save_best_only=True)
 
-    batch_size = 500
-    epochs = 16
-    history = seq2seq_Model.fit([encoder_input_data, decoder_input_data], np.expand_dims(decoder_target_data, -1),
+    batch_size = 32
+    epochs = 1
+    history = seq2seq_Model.fit([encoder_input_data,s_encoder_input_data, decoder_input_data], np.expand_dims(decoder_target_data, -1),
               batch_size=batch_size,
               epochs=epochs,
               validation_split=0.12, callbacks=[csv_logger, model_checkpoint])
+    seq2seq_Model.save("seqmodel.hdf5")
 
 
 def predict():
@@ -101,7 +107,7 @@ def predict():
     seq2seq_inf.predications(df=demo_testdf)
 
 if __name__=="__main__":
-    datapre()
-    # train()
+    # datapre()
+    train()
     # predict()
 

@@ -15,7 +15,9 @@ tf.device('/gpu:0')
 def build_seq2seq_model(word_emb_dim,
                         hidden_state_dim,
                         encoder_seq_len,
+                        s_encoder_seq_len,
                         num_encoder_tokens,
+                        num_s_encoder_tokens,
                         num_decoder_tokens):
     """
     Builds architecture for sequence to sequence model.
@@ -50,13 +52,25 @@ def build_seq2seq_model(word_emb_dim,
     x = BatchNormalization(name='Encoder-Batchnorm-1')(x)
 
     # We do not need the `encoder_output` just the hidden state.
-    _, state_h = GRU(hidden_state_dim, return_state=True, name='Encoder-Last-GRU', dropout=.5)(x)
+    _, state_h = GRU(hidden_state_dim, return_state=True, name='Encoder-Last-GRU')(x)
 
     # Encapsulate the encoder as a separate entity so we can just
     #  encode without decoding if we want to.
     encoder_model = Model(inputs=encoder_inputs, outputs=state_h, name='Encoder-Model')
 
-    seq2seq_encoder_out = encoder_model(encoder_inputs)
+
+
+    #### second Encoder Model ####
+    s_encoder_inputs = Input(shape=(s_encoder_seq_len,),name='s_Encoder_Input')
+    s_x = Embedding(num_s_encoder_tokens, word_emb_dim, name='s_Body_Word_Embedding', mask_zero=False)(s_encoder_inputs)
+    s_x = BatchNormalization(name='s_Encoder_Batchnorm-1')(s_x)
+
+    _, s_state_h = GRU(hidden_state_dim, return_state=True, name='Encoder-Last-GRU')(s_x)
+
+    s_encoder_model = Model(inputs = s_encoder_inputs, outputs= s_state_h, name='s_Encoder-Model')
+
+    seq2seq_encoder_out = K.concatenate([encoder_model(encoder_inputs), s_encoder_model(s_encoder_inputs)], axis=-1)
+
 
     #### Decoder Model ####
     decoder_inputs = Input(shape=(None,), name='Decoder-Input')  # for teacher forcing
@@ -66,7 +80,7 @@ def build_seq2seq_model(word_emb_dim,
     dec_bn = BatchNormalization(name='Decoder-Batchnorm-1')(dec_emb)
 
     # Set up the decoder, using `decoder_state_input` as initial state.
-    decoder_gru = GRU(hidden_state_dim, return_state=True, return_sequences=True, name='Decoder-GRU', dropout=.5)
+    decoder_gru = GRU(hidden_state_dim*2, return_state=True, return_sequences=True, name='Decoder-GRU')
     decoder_gru_output, _ = decoder_gru(dec_bn, initial_state=seq2seq_encoder_out)
     x = BatchNormalization(name='Decoder-Batchnorm-2')(decoder_gru_output)
 
@@ -75,7 +89,7 @@ def build_seq2seq_model(word_emb_dim,
     decoder_outputs = decoder_dense(x)
 
     #### Seq2Seq Model ####
-    seq2seq_Model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
+    seq2seq_Model = Model([encoder_inputs,s_encoder_inputs, decoder_inputs], decoder_outputs)
     return seq2seq_Model
 
 
