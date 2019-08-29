@@ -70,8 +70,11 @@ def build_seq2seq_model(word_emb_dim,
 
     s_encoder_model = Model(inputs = s_encoder_inputs, outputs= s_state_h, name='s_Encoder-Model')
 
-    seq2seq_encoder_out = Concatenate(name="concate_layer")([encoder_model(encoder_inputs), s_encoder_model(s_encoder_inputs)])
+    two_encoder_out = Concatenate(name="concate_layer")([encoder_model(encoder_inputs), s_encoder_model(s_encoder_inputs)])
 
+    all_encoder_out = Model(inputs=[encoder_inputs,s_encoder_inputs],outputs=two_encoder_out,name="two_Encoder")
+
+    seq2seq_encoder_out = all_encoder_out([encoder_inputs,s_encoder_inputs])
 
     #### Decoder Model ####
     decoder_inputs = Input(shape=(None,), name='Decoder-Input')  # for teacher forcing
@@ -233,7 +236,8 @@ def extract_encoder_model(model):
     keras model object
 
     """
-    encoder_model = model.get_layer('Encoder-Model')
+    model.summary()
+    encoder_model = model.get_layer('two_Encoder')
     return encoder_model
 
 
@@ -265,7 +269,7 @@ def extract_decoder_model(model):
 
     """
     # the latent dimension is the dmeinsion of the hidden state passed from the encoder to the decoder.
-    latent_dim = model.get_layer('Encoder-Model').output_shape[-1]
+    latent_dim = model.get_layer('two_Encoder').output_shape[-1]
 
     # Reconstruct the input into the decoder
     decoder_inputs = model.get_layer('Decoder-Input').input
@@ -296,13 +300,16 @@ def extract_decoder_model(model):
 class Seq2Seq_Inference(object):
     def __init__(self,
                  encoder_preprocessor,
+                 s_encoder_preprocessor,
                  decoder_preprocessor,
                  seq2seq_model):
 
         self.enc_pp = encoder_preprocessor
+        self.s_enc_pp = s_encoder_preprocessor
         self.dec_pp = decoder_preprocessor
         self.seq2seq_model = seq2seq_model
         self.encoder_model = extract_encoder_model(seq2seq_model)
+
         self.decoder_model = extract_decoder_model(seq2seq_model)
         self.default_max_len = self.dec_pp.padding_maxlen
         self.nn = None
@@ -310,6 +317,7 @@ class Seq2Seq_Inference(object):
 
     def predict(self,
                 raw_input_text,
+                s_raw_input_text,
                 max_len=None):
         """
         Use the seq2seq model to generate a output given the input.
@@ -327,7 +335,9 @@ class Seq2Seq_Inference(object):
             max_len = self.default_max_len
         # get the encoder's features for the decoder
         raw_tokenized = self.enc_pp.transform([raw_input_text])
-        encoding = self.encoder_model.predict(raw_tokenized)
+        s_raw_tokenized = self.s_enc_pp.transform([s_raw_input_text])
+
+        encoding = self.encoder_model.predict([raw_tokenized,s_raw_tokenized])
         # we want to save the encoder's embedding before its updated by decoder
         #   because we can use that as an embedding for other tasks.
         original_encoding = encoding
@@ -385,12 +395,15 @@ class Seq2Seq_Inference(object):
     def predications(self,
                         df,
                         input_col='code',
+                        s_input_col = 'api',
 
-                        path = "generatetag.txt"):
+                        path = "generate.txt"):
         input_text = df[input_col].tolist()
+        s_input_text = df[s_input_col].tolist()
         file = open(path,"w",encoding="utf-8")
-        for text in input_text:
-            emb, gen_title = self.predict(text)
+        for text,stext in zip(input_text,s_input_text):
+
+            emb, gen_title = self.predict(text,stext)
             file.write(gen_title+"\n")
 
     def demo_model_predictions(self,
@@ -453,11 +466,14 @@ class Seq2Seq_Inference(object):
         logging.warning('Generating predictions.')
         # step over the whole set TODO: parallelize this
         for i in tqdm_notebook(range(num_examples)):
-            _, yhat = self.predict(input_strings[i], max_len)
+            yhat = input_strings[i]
 
             self.actual.append(self.dec_pp.process_text([output_strings[i]])[0])
             self.predicted.append(self.dec_pp.process_text([yhat])[0])
         # calculate BLEU score
         logging.warning('Calculating BLEU.')
+
         bleu = corpus_bleu([[a] for a in self.actual], self.predicted)
         return bleu
+
+

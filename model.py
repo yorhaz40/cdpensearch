@@ -58,12 +58,12 @@ def datapre():
 
 
 def train():
-    encoder_input_data, encoder_seq_len = load_encoder_inputs(OUTPUT_PATH / 'py_t_comment_vecs_v2.npy')
+    encoder_input_data, encoder_seq_len = load_encoder_inputs(OUTPUT_PATH / 'py_t_code_vecs_v2.npy')
     s_encoder_input_data, s_encoder_seq_len = load_encoder_inputs(OUTPUT_PATH/'py_t_api_vecs_v2.npy')
-    decoder_input_data, decoder_target_data = load_decoder_inputs(OUTPUT_PATH / 'py_t_code_vecs_v2.npy')
-    num_encoder_tokens, enc_pp = load_text_processor(OUTPUT_PATH / 'py_comment_proc_v2.dpkl')
+    decoder_input_data, decoder_target_data = load_decoder_inputs(OUTPUT_PATH / 'py_t_comment_vecs_v2.npy')
+    num_encoder_tokens, enc_pp = load_text_processor(OUTPUT_PATH / 'py_code_proc_v2.dpkl')
     s_num_encoder_tokens, s_enc_pp = load_text_processor(OUTPUT_PATH/'py_api_proc_v2.dpkl')
-    num_decoder_tokens, dec_pp = load_text_processor(OUTPUT_PATH / 'py_code_proc_v2.dpkl')
+    num_decoder_tokens, dec_pp = load_text_processor(OUTPUT_PATH / 'py_comment_proc_v2.dpkl')
 
     seq2seq_Model = build_seq2seq_model(word_emb_dim=128,
                                         hidden_state_dim=128 ,
@@ -75,7 +75,7 @@ def train():
 
 
     seq2seq_Model.summary()
-    seq2seq_Model.compile(optimizer=optimizers.Nadam(lr=0.5), loss='sparse_categorical_crossentropy')
+    seq2seq_Model.compile(optimizer=optimizers.Nadam(lr=0.05), loss='sparse_categorical_crossentropy')
 
     script_name_base = 'py_func_sum_v9_'
     csv_logger = CSVLogger('{:}.log'.format(script_name_base))
@@ -93,8 +93,10 @@ def train():
 
 
 def predict():
-    train_code, holdout_code, train_comment, holdout_comment = read_training_files('../../data/processed_data/')
-    loc = "seqmodel.hdf5"
+    train_code, holdout_code, train_comment, holdout_comment, train_api, holdout_api, train_seq, holdout_seq = read_training_files(
+        '../../data/processed_data/')
+
+    loc = "../../model/seqmodel.hdf5"
     seq2seq_Model = load_model(loc)
 
     loc = OUTPUT_PATH/'py_code_proc_v2.dpkl'
@@ -102,16 +104,22 @@ def predict():
     s_num_encoder_tokens, s_enc_pp = load_text_processor(OUTPUT_PATH/'py_api_proc_v2.dpkl')
     num_decoder_tokens, dec_pp = load_text_processor(OUTPUT_PATH / 'py_comment_proc_v2.dpkl')
     seq2seq_inf = Seq2Seq_Inference(encoder_preprocessor=enc_pp,
+                                    s_encoder_preprocessor=s_enc_pp,
                                     decoder_preprocessor=dec_pp,
                                     seq2seq_model=seq2seq_Model)
-    demo_testdf = pd.DataFrame({'code': holdout_code, 'comment': holdout_comment, 'ref': ''})
-    seq2seq_inf.predications(df=demo_testdf)
+    # demo_testdf = pd.DataFrame({'code': holdout_code,'api':holdout_api, 'comment': holdout_comment, 'ref': ''})
+    # seq2seq_inf.predications(df=demo_testdf)
+    f = open("generate.txt")
+
+    seq2seq_inf.evaluate_model(f.readlines(),holdout_comment,max_len=None)
 
 if __name__=="__main__":
     # datapre()
     # train()
-    loc = "seqmodel.hdf5"
-    seq2seq_Model = load_model(loc)
-    print()
-    # predict()
+    # loc = "seqmodel.hdf5"
+    # seq2seq_Model = load_model(loc)
+    # print()
+    predict()
+
+
 

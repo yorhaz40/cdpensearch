@@ -27,28 +27,28 @@ def read_training_files(data_path:str):
     """
     PATH = Path(data_path)
 
-    with open(PATH/'train.function', 'r') as f:
+    with open(PATH/'train.function', 'r',encoding="utf-8") as f:
         t_enc = f.readlines()
 
-    with open(PATH/'valid.function', 'r') as f:
+    with open(PATH/'valid.function', 'r',encoding="utf-8") as f:
         v_enc = f.readlines()
 
     # combine train and validation and let keras split it randomly for you
     tv_enc = t_enc + v_enc
 
-    with open(PATH/'test.function', 'r') as f:
+    with open(PATH/'test.function', 'r',encoding="utf-8") as f:
         h_enc = f.readlines()
 
-    with open(PATH/'train.docstring', 'r') as f:
+    with open(PATH/'train.docstring', 'r',encoding="utf-8") as f:
         t_dec = f.readlines()
 
-    with open(PATH/'valid.docstring', 'r') as f:
+    with open(PATH/'valid.docstring', 'r',encoding="utf-8") as f:
         v_dec = f.readlines()
 
     # combine train and validation and let keras split it randomly for you
     tv_dec = t_dec + v_dec
 
-    with open(PATH/'test.docstring', 'r') as f:
+    with open(PATH/'test.docstring', 'r',encoding="utf-8") as f:
         h_dec = f.readlines()
 
 
