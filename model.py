@@ -93,12 +93,13 @@ def train():
 
 
 def predict():
-    train_code, holdout_code, train_comment, holdout_comment = read_training_files('./data/processed_data2/')
-    loc = "/home/bohong/文档/to_bro/seq_of_zlb_reverse/modelsave/py_func_sum_v9_.epoch16-val2.28375.hdf5"
+    train_code, holdout_code, train_comment, holdout_comment = read_training_files('../../data/processed_data/')
+    loc = "seqmodel.hdf5"
     seq2seq_Model = load_model(loc)
 
     loc = OUTPUT_PATH/'py_code_proc_v2.dpkl'
     num_encoder_tokens, enc_pp = load_text_processor(OUTPUT_PATH / 'py_code_proc_v2.dpkl')
+    s_num_encoder_tokens, s_enc_pp = load_text_processor(OUTPUT_PATH/'py_api_proc_v2.dpkl')
     num_decoder_tokens, dec_pp = load_text_processor(OUTPUT_PATH / 'py_comment_proc_v2.dpkl')
     seq2seq_inf = Seq2Seq_Inference(encoder_preprocessor=enc_pp,
                                     decoder_preprocessor=dec_pp,
@@ -108,6 +109,9 @@ def predict():
 
 if __name__=="__main__":
     # datapre()
-    train()
+    # train()
+    loc = "seqmodel.hdf5"
+    seq2seq_Model = load_model(loc)
+    print()
     # predict()
 

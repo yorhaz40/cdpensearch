@@ -5,6 +5,7 @@ from keras.models import Model
 from keras.layers import Input, LSTM, GRU, Dense, Embedding, Bidirectional, BatchNormalization
 from IPython.display import SVG, display
 from keras.utils.vis_utils import model_to_dot
+from keras.layers import Concatenate
 import logging
 import numpy as np
 import dill as dpickle
@@ -69,7 +70,7 @@ def build_seq2seq_model(word_emb_dim,
 
     s_encoder_model = Model(inputs = s_encoder_inputs, outputs= s_state_h, name='s_Encoder-Model')
 
-    seq2seq_encoder_out = K.concatenate([encoder_model(encoder_inputs), s_encoder_model(s_encoder_inputs)], axis=-1)
+    seq2seq_encoder_out = Concatenate(name="concate_layer")([encoder_model(encoder_inputs), s_encoder_model(s_encoder_inputs)])
 
 
     #### Decoder Model ####
@@ -384,6 +385,7 @@ class Seq2Seq_Inference(object):
     def predications(self,
                         df,
                         input_col='code',
+
                         path = "generatetag.txt"):
         input_text = df[input_col].tolist()
         file = open(path,"w",encoding="utf-8")
