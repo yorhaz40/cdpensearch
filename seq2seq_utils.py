@@ -397,7 +397,7 @@ class Seq2Seq_Inference(object):
                         input_col='code',
                         s_input_col = 'api',
 
-                        path = "generate.txt"):
+                        path = "generate2.txt"):
         input_text = df[input_col].tolist()
         s_input_text = df[s_input_col].tolist()
         file = open(path,"w",encoding="utf-8")

@@ -5,7 +5,7 @@ from keras.models import Model, load_model
 from ktext.preprocess import processor
 import dill as dpickle
 import numpy as np
-OUTPUT_PATH = Path('../../data/seq2seq/')
+OUTPUT_PATH = Path('../data/seq2seq/')
 OUTPUT_PATH.mkdir(exist_ok=True)
 from keras.models import Model, load_model
 import pandas as pd
@@ -59,10 +59,10 @@ def datapre():
 
 def train():
     encoder_input_data, encoder_seq_len = load_encoder_inputs(OUTPUT_PATH / 'py_t_code_vecs_v2.npy')
-    s_encoder_input_data, s_encoder_seq_len = load_encoder_inputs(OUTPUT_PATH/'py_t_api_vecs_v2.npy')
+    s_encoder_input_data, s_encoder_seq_len = load_encoder_inputs(OUTPUT_PATH/'py_t_seq_vecs_v2.npy')
     decoder_input_data, decoder_target_data = load_decoder_inputs(OUTPUT_PATH / 'py_t_comment_vecs_v2.npy')
     num_encoder_tokens, enc_pp = load_text_processor(OUTPUT_PATH / 'py_code_proc_v2.dpkl')
-    s_num_encoder_tokens, s_enc_pp = load_text_processor(OUTPUT_PATH/'py_api_proc_v2.dpkl')
+    s_num_encoder_tokens, s_enc_pp = load_text_processor(OUTPUT_PATH/'py_seq_proc_v2.dpkl')
     num_decoder_tokens, dec_pp = load_text_processor(OUTPUT_PATH / 'py_comment_proc_v2.dpkl')
 
     seq2seq_Model = build_seq2seq_model(word_emb_dim=128,
@@ -75,7 +75,7 @@ def train():
 
 
     seq2seq_Model.summary()
-    seq2seq_Model.compile(optimizer=optimizers.Nadam(lr=0.05), loss='sparse_categorical_crossentropy')
+    seq2seq_Model.compile(optimizer=optimizers.Nadam(lr=0.0005), loss='sparse_categorical_crossentropy')
 
     script_name_base = 'py_func_sum_v9_'
     csv_logger = CSVLogger('{:}.log'.format(script_name_base))
@@ -83,8 +83,8 @@ def train():
     model_checkpoint = ModelCheckpoint('{:}.epoch{{epoch:02d}}-val{{val_loss:.5f}}.hdf5'.format(script_name_base),
                                        save_best_only=True)
 
-    batch_size = 32
-    epochs = 1
+    batch_size = 100
+    epochs = 50
     history = seq2seq_Model.fit([encoder_input_data,s_encoder_input_data, decoder_input_data], np.expand_dims(decoder_target_data, -1),
               batch_size=batch_size,
               epochs=epochs,
@@ -94,24 +94,26 @@ def train():
 
 def predict():
     train_code, holdout_code, train_comment, holdout_comment, train_api, holdout_api, train_seq, holdout_seq = read_training_files(
-        '../../data/processed_data/')
+        '../data/processed_data/')
 
-    loc = "../../model/seqmodel.hdf5"
+    loc = "../seqmodel/seqmodel.hdf5"
     seq2seq_Model = load_model(loc)
 
     loc = OUTPUT_PATH/'py_code_proc_v2.dpkl'
     num_encoder_tokens, enc_pp = load_text_processor(OUTPUT_PATH / 'py_code_proc_v2.dpkl')
-    s_num_encoder_tokens, s_enc_pp = load_text_processor(OUTPUT_PATH/'py_api_proc_v2.dpkl')
+    s_num_encoder_tokens, s_enc_pp = load_text_processor(OUTPUT_PATH/'py_seq_proc_v2.dpkl')
     num_decoder_tokens, dec_pp = load_text_processor(OUTPUT_PATH / 'py_comment_proc_v2.dpkl')
     seq2seq_inf = Seq2Seq_Inference(encoder_preprocessor=enc_pp,
                                     s_encoder_preprocessor=s_enc_pp,
                                     decoder_preprocessor=dec_pp,
                                     seq2seq_model=seq2seq_Model)
-    # demo_testdf = pd.DataFrame({'code': holdout_code,'api':holdout_api, 'comment': holdout_comment, 'ref': ''})
-    # seq2seq_inf.predications(df=demo_testdf)
-    f = open("generate.txt")
+    demo_testdf = pd.DataFrame({'code': holdout_code,'api':holdout_seq, 'comment': holdout_comment, 'ref': ''})
+    seq2seq_inf.predications(df=demo_testdf)
+    f = open("generate2.txt")
 
-    seq2seq_inf.evaluate_model(f.readlines(),holdout_comment,max_len=None)
+    score = seq2seq_inf.evaluate_model(f.readlines(),holdout_comment,max_len=None)
+    f.close()
+    print(score)
 
 if __name__=="__main__":
     # datapre()
