@@ -8,7 +8,7 @@ import numpy as np
 import tqdm
 
 def dataprepare():
-    source_path = Path('./data/lang_model/')
+    source_path = Path('../data/lang_model/')
 
     with open(source_path / 'train.docstring', 'r') as f:
         trn_raw = f.readlines()
@@ -32,16 +32,16 @@ def dataprepare():
     print([vocab.itos[x] for x in trn_flat_idx[:10]])
 
 
-    vocab.save('./data/lang_model/vocab.cls')
-    save_file_pickle('./data/lang_model/trn_flat_idx_list.pkl', trn_flat_idx)
-    save_file_pickle('./data/lang_model/val_flat_idx_list.pkl', val_flat_idx)
+    vocab.save('../data/lang_model/vocab.cls')
+    save_file_pickle('../data/lang_model/trn_flat_idx_list.pkl', trn_flat_idx)
+    save_file_pickle('../data/lang_model/val_flat_idx_list.pkl', val_flat_idx)
 
 
 def train():
-    vocab = load_lm_vocab('./data/lang_model/vocab.cls')
-    trn_flat_idx = load_file_pickle('./data/lang_model/trn_flat_idx_list.pkl')
-    val_flat_idx = load_file_pickle('./data/lang_model/val_flat_idx_list.pkl')
-    fastai_learner, lang_model = train_lang_model(model_path = './data/lang_model_weights_v2',
+    vocab = load_lm_vocab('../data/lang_model/vocab.cls')
+    trn_flat_idx = load_file_pickle('../data/lang_model/trn_flat_idx_list.pkl')
+    val_flat_idx = load_file_pickle('../data/lang_model/val_flat_idx_list.pkl')
+    fastai_learner, lang_model = train_lang_model(model_path = '../data/lang_model_weights_v2',
                                                   trn_indexed = trn_flat_idx,
                                                   val_indexed = val_flat_idx,
                                                   vocab_size = vocab.vocab_size,
@@ -59,7 +59,7 @@ def train():
     fastai_learner.fit(1e-3, 2, wds=1e-6, cycle_len=3, cycle_mult=10)
     fastai_learner.save('lang_model_learner_v2.fai')
     lang_model_new = fastai_learner.model.eval()
-    torch.save(lang_model_new, './data/lang_model/lang_model_gpu_v2.torch')
+    torch.save(lang_model_new, '../data/lang_model/lang_model_gpu_v2.torch')
 from torch.autograd import Variable
 
 def list2arr(l):
@@ -120,10 +120,10 @@ def get_embeddings(lm_model, list_list_int):
     return avgarr, maxarr, lastarr
 
 def save_embeddings():
-    vocab = load_lm_vocab('./data/lang_model/vocab.cls')
-    lang_model = torch.load('./data/lang_model/lang_model_gpu_v2.torch',
+    vocab = load_lm_vocab('../data/lang_model/vocab.cls')
+    lang_model = torch.load('../data/lang_model/lang_model_gpu_v2.torch',
                             map_location=lambda storage, loc: storage)
-    with open('/home/bohong/文档/to_bro/seq_of_zlb_reverse/data/processed_data/test.function', 'r') as f:
+    with open('/home/bohong/文档/mygit/cdpensearch/data/lang_model/test.docstring', 'r') as f:
         test_raw = f.readlines()
 
     idx_docs_test = vocab.transform(test_raw, max_seq_len=30, padding=False)
@@ -135,6 +135,6 @@ def save_embeddings():
     np.save(savepath / 'last_emb_dim500_code_v2.npy', last_hs_test)
 
 if __name__ == "__main__":
-    #dataprepare()
-     train()
+    # dataprepare()
+    train()
    #  save_embeddings()
